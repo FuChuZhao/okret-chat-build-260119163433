@@ -272,12 +272,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -no-snapshot -metrics-collection
           disable-animations: true
           script: |
-            bash source/tool/ci/test.sh \
-              --target android \
-              --device emulator-5554 \
-              --base-url "http://10.0.2.2:8181" \
-              --out "$GITHUB_WORKSPACE/artifacts" \
-              --project apps/okret_chat
+            bash source/tool/ci/test.sh --target android --device emulator-5554 --base-url "http://10.0.2.2:8181" --out "$GITHUB_WORKSPACE/artifacts" --project apps/okret_chat
 
       - name: Upload artifact
         if: always()
