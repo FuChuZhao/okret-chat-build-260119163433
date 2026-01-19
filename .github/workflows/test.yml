@@ -40,6 +40,13 @@ jobs:
     if: contains(inputs.platforms, 'server')
     runs-on: ubuntu-latest
     steps:
+      - name: Prepare artifact dir
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          echo "placeholder" >"$GITHUB_WORKSPACE/artifacts/.keep"
+
       - name: Setup SSH (deploy key)
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -61,26 +68,42 @@ jobs:
           sdk: 3.7.2
 
       - name: Server unit tests
+        id: server_tests
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           cd source/server/okret_server
           dart pub get >/dev/null
           dart test -r expanded | tee "$GITHUB_WORKSPACE/server_test.log"
+          cp -f "$GITHUB_WORKSPACE/server_test.log" "$GITHUB_WORKSPACE/artifacts/server_test.log" || true
 
       - name: Upload artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}-server
           path: |
-            server_test.log
+            artifacts/*
           retention-days: 1
-          if-no-files-found: error
+          if-no-files-found: warn
+
+      - name: Fail if tests failed
+        if: steps.server_tests.outcome == 'failure'
+        shell: bash
+        run: exit 1
 
   linux:
     if: contains(inputs.platforms, 'linux')
     runs-on: ubuntu-latest
     steps:
+      - name: Prepare artifact dir
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          echo "placeholder" >"$GITHUB_WORKSPACE/artifacts/.keep"
+
       - name: Setup SSH (deploy key)
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -110,6 +133,8 @@ jobs:
           cache: true
 
       - name: Test (Linux integration + report)
+        id: linux_tests
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -120,17 +145,29 @@ jobs:
             --project apps/okret_chat
 
       - name: Upload artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}-linux
           path: artifacts/*
           retention-days: 1
-          if-no-files-found: error
+          if-no-files-found: warn
+
+      - name: Fail if tests failed
+        if: steps.linux_tests.outcome == 'failure'
+        shell: bash
+        run: exit 1
 
   windows:
     if: contains(inputs.platforms, 'windows')
     runs-on: windows-latest
     steps:
+      - name: Prepare artifact dir
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\\artifacts" | Out-Null
+          "placeholder" | Out-File -FilePath "$env:GITHUB_WORKSPACE\\artifacts\\.keep" -Encoding utf8
+
       - name: Setup SSH (deploy key)
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -153,22 +190,37 @@ jobs:
           cache: true
 
       - name: Test (Windows integration + report)
+        id: windows_tests
+        continue-on-error: true
         shell: pwsh
         run: |
           ./source/tool/ci/test.ps1 -Target windows -OutDir "$env:GITHUB_WORKSPACE\\artifacts" -Project apps/okret_chat
 
       - name: Upload artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}-windows
           path: artifacts/*
           retention-days: 1
-          if-no-files-found: error
+          if-no-files-found: warn
+
+      - name: Fail if tests failed
+        if: steps.windows_tests.outcome == 'failure'
+        shell: pwsh
+        run: exit 1
 
   android:
     if: contains(inputs.platforms, 'android')
     runs-on: ubuntu-latest
     steps:
+      - name: Prepare artifact dir
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          echo "placeholder" >"$GITHUB_WORKSPACE/artifacts/.keep"
+
       - name: Setup SSH (deploy key)
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -197,6 +249,8 @@ jobs:
           cache: true
 
       - name: Android integration test (emulator)
+        id: android_tests
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -215,10 +269,15 @@ jobs:
               --project apps/okret_chat
 
       - name: Upload artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}-android
           path: artifacts/*
           retention-days: 1
-          if-no-files-found: error
+          if-no-files-found: warn
 
+      - name: Fail if tests failed
+        if: steps.android_tests.outcome == 'failure'
+        shell: bash
+        run: exit 1

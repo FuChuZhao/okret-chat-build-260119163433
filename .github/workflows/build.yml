@@ -201,6 +201,3 @@ jobs:
           path: artifacts/*
           retention-days: 1
           if-no-files-found: error
-          path: artifacts/*
-          retention-days: 1
-          if-no-files-found: error
