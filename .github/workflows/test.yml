@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          echo "placeholder" >"$GITHUB_WORKSPACE/artifacts/.keep"
+          echo "placeholder" >"$GITHUB_WORKSPACE/artifacts/placeholder.txt"
 
       - name: Setup SSH (deploy key)
         uses: webfactory/ssh-agent@v0.9.0
@@ -102,7 +102,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          echo "placeholder" >"$GITHUB_WORKSPACE/artifacts/.keep"
+          echo "placeholder" >"$GITHUB_WORKSPACE/artifacts/placeholder.txt"
 
       - name: Setup SSH (deploy key)
         uses: webfactory/ssh-agent@v0.9.0
@@ -166,7 +166,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\\artifacts" | Out-Null
-          "placeholder" | Out-File -FilePath "$env:GITHUB_WORKSPACE\\artifacts\\.keep" -Encoding utf8
+          "placeholder" | Out-File -FilePath "$env:GITHUB_WORKSPACE\\artifacts\\placeholder.txt" -Encoding utf8
 
       - name: Setup SSH (deploy key)
         uses: webfactory/ssh-agent@v0.9.0
@@ -219,7 +219,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
-          echo "placeholder" >"$GITHUB_WORKSPACE/artifacts/.keep"
+          echo "placeholder" >"$GITHUB_WORKSPACE/artifacts/placeholder.txt"
 
       - name: Setup SSH (deploy key)
         uses: webfactory/ssh-agent@v0.9.0
@@ -272,7 +272,6 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -no-snapshot -metrics-collection
           disable-animations: true
           script: |
-            set -euo pipefail
             bash source/tool/ci/test.sh \
               --target android \
               --device emulator-5554 \
