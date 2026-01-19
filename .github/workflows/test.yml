@@ -199,9 +199,10 @@ jobs:
       - name: Android integration test (emulator)
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 30
           arch: x86_64
-          profile: Nexus 6
+          profile: pixel_3
+          emulator-boot-timeout: 1200
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: |
