@@ -1,13 +1,14 @@
-# Copy this file into your BUILD_REPO as: .github/workflows/build.yml
+# Copy this file into your BUILD_REPO as: .github/workflows/test.yml
 #
 # Requirements:
 # - BUILD_REPO is public and contains workflows only.
-# - SOURCE_REPO is private and contains code + tool/ci/build.* scripts.
+# - SOURCE_REPO is private and contains code + tool/ci/test.* scripts.
 # - BUILD_REPO Actions secret: SOURCE_REPO_SSH_KEY (read-only deploy key for SOURCE_REPO).
 #
-# This workflow is workflow_dispatch-only and uploads short-lived artifacts.
+# This workflow is workflow_dispatch-only and uploads short-lived test artifacts
+# (logs, reports, screenshots/recordings if available). It never uploads source.
 
-name: build
+name: test
 
 on:
   workflow_dispatch:
@@ -23,7 +24,7 @@ on:
       artifact_name:
         description: "Artifact name prefix"
         required: false
-        default: "okret-chat"
+        default: "okret-chat-tests"
         type: string
       platforms:
         description: "Comma-separated: windows,linux,android,server"
@@ -35,6 +36,97 @@ permissions:
   contents: read
 
 jobs:
+  server:
+    if: contains(inputs.platforms, 'server')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH (deploy key)
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SOURCE_REPO_SSH_KEY }}
+
+      - name: Clone private source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          git clone "git@github.com:${{ inputs.source_repo }}.git" source
+          cd source
+          git checkout "${{ inputs.source_ref }}"
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.7.2
+
+      - name: Server unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source/server/okret_server
+          dart pub get >/dev/null
+          dart test -r expanded | tee "$GITHUB_WORKSPACE/server_test.log"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}-server
+          path: |
+            server_test.log
+          retention-days: 1
+          if-no-files-found: error
+
+  linux:
+    if: contains(inputs.platforms, 'linux')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH (deploy key)
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SOURCE_REPO_SSH_KEY }}
+
+      - name: Clone private source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          git clone "git@github.com:${{ inputs.source_repo }}.git" source
+          cd source
+          git checkout "${{ inputs.source_ref }}"
+
+      - name: System deps (Linux desktop + recording)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev xvfb ffmpeg
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.29.3
+          cache: true
+
+      - name: Test (Linux integration + report)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash source/tool/ci/test.sh \
+            --target linux \
+            --device linux \
+            --out "$GITHUB_WORKSPACE/artifacts" \
+            --project apps/okret_chat
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}-linux
+          path: artifacts/*
+          retention-days: 1
+          if-no-files-found: error
+
   windows:
     if: contains(inputs.platforms, 'windows')
     runs-on: windows-latest
@@ -60,61 +152,15 @@ jobs:
           flutter-version: 3.29.3
           cache: true
 
-      - name: Build (Windows app + server)
+      - name: Test (Windows integration + report)
         shell: pwsh
         run: |
-          ./source/tool/ci/build.ps1 -Target all -OutDir "$env:GITHUB_WORKSPACE\\artifacts" -Project apps/okret_chat
+          ./source/tool/ci/test.ps1 -Target windows -OutDir "$env:GITHUB_WORKSPACE\\artifacts" -Project apps/okret_chat
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}-windows
-          path: artifacts/*
-          retention-days: 1
-          if-no-files-found: error
-
-  linux:
-    if: contains(inputs.platforms, 'linux')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup SSH (deploy key)
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SOURCE_REPO_SSH_KEY }}
-
-      - name: Clone private source
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-          git clone "git@github.com:${{ inputs.source_repo }}.git" source
-          cd source
-          git checkout "${{ inputs.source_ref }}"
-
-      - name: System deps (Linux desktop)
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 3.29.3
-          cache: true
-
-      - name: Build (Linux)
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash source/tool/ci/build.sh --target linux --out "$GITHUB_WORKSPACE/artifacts" --project apps/okret_chat
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.artifact_name }}-linux
           path: artifacts/*
           retention-days: 1
           if-no-files-found: error
@@ -150,11 +196,22 @@ jobs:
           flutter-version: 3.29.3
           cache: true
 
-      - name: Build (Android APK)
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash source/tool/ci/build.sh --target android --out "$GITHUB_WORKSPACE/artifacts" --project apps/okret_chat
+      - name: Android integration test (emulator)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: Nexus 6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            bash source/tool/ci/test.sh \
+              --target android \
+              --device emulator-5554 \
+              --base-url "http://10.0.2.2:8181" \
+              --out "$GITHUB_WORKSPACE/artifacts" \
+              --project apps/okret_chat
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -164,43 +221,3 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  server:
-    if: contains(inputs.platforms, 'server')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup SSH (deploy key)
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SOURCE_REPO_SSH_KEY }}
-
-      - name: Clone private source
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-          git clone "git@github.com:${{ inputs.source_repo }}.git" source
-          cd source
-          git checkout "${{ inputs.source_ref }}"
-
-      - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: 3.7.2
-
-      - name: Build server (Okret Server, Linux)
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash source/tool/ci/build.sh --target server --out "$GITHUB_WORKSPACE/artifacts"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.artifact_name }}-server
-          path: artifacts/*
-          retention-days: 1
-          if-no-files-found: error
-          path: artifacts/*
-          retention-days: 1
-          if-no-files-found: error
