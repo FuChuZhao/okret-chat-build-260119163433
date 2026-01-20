@@ -96,6 +96,8 @@ jobs:
   linux:
     if: contains(inputs.platforms, 'linux')
     runs-on: ubuntu-latest
+    env:
+      OKRET_TEST_HOOKS_TOKEN: ${{ github.run_id }}-${{ github.run_attempt }}-linux
     steps:
       - name: Prepare artifact dir
         shell: bash
@@ -118,6 +120,12 @@ jobs:
           git clone "git@github.com:${{ inputs.source_repo }}.git" source
           cd source
           git checkout "${{ inputs.source_ref }}"
+
+      - name: Enable CI hooks (patch)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash source/tool/ci/hooks_enable.sh
 
       - name: System deps (Linux desktop + recording)
         shell: bash
@@ -161,6 +169,8 @@ jobs:
   windows:
     if: contains(inputs.platforms, 'windows')
     runs-on: windows-latest
+    env:
+      OKRET_TEST_HOOKS_TOKEN: ${{ github.run_id }}-${{ github.run_attempt }}-windows
     steps:
       - name: Prepare artifact dir
         shell: pwsh
@@ -182,6 +192,10 @@ jobs:
           git clone "git@github.com:${{ inputs.source_repo }}.git" source
           cd source
           git checkout "${{ inputs.source_ref }}"
+
+      - name: Enable CI hooks (patch)
+        shell: pwsh
+        run: ./source/tool/ci/hooks_enable.ps1
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -213,6 +227,8 @@ jobs:
   android:
     if: contains(inputs.platforms, 'android')
     runs-on: ubuntu-latest
+    env:
+      OKRET_TEST_HOOKS_TOKEN: ${{ github.run_id }}-${{ github.run_attempt }}-android
     steps:
       - name: Prepare artifact dir
         shell: bash
@@ -235,6 +251,12 @@ jobs:
           git clone "git@github.com:${{ inputs.source_repo }}.git" source
           cd source
           git checkout "${{ inputs.source_ref }}"
+
+      - name: Enable CI hooks (patch)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash source/tool/ci/hooks_enable.sh
 
       - name: Setup Java
         uses: actions/setup-java@v4
