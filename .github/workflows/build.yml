@@ -63,7 +63,9 @@ jobs:
       - name: Build (Windows app + server)
         shell: pwsh
         run: |
-          ./source/tool/ci/build.ps1 -Target all -OutDir "$env:GITHUB_WORKSPACE\\artifacts" -Project apps/okret_chat
+          ./source/tool/ci/build.ps1 -Target windows -OutDir "$env:GITHUB_WORKSPACE\\artifacts" -Project apps/okret_chat
+          ./source/tool/ci/build.ps1 -Target windows -OutDir "$env:GITHUB_WORKSPACE\\artifacts" -Project apps/okret_admin
+          ./source/tool/ci/build.ps1 -Target server -OutDir "$env:GITHUB_WORKSPACE\\artifacts"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -110,6 +112,7 @@ jobs:
         run: |
           set -euo pipefail
           bash source/tool/ci/build.sh --target linux --out "$GITHUB_WORKSPACE/artifacts" --project apps/okret_chat
+          bash source/tool/ci/build.sh --target linux --out "$GITHUB_WORKSPACE/artifacts" --project apps/okret_admin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -155,6 +158,7 @@ jobs:
         run: |
           set -euo pipefail
           bash source/tool/ci/build.sh --target android --out "$GITHUB_WORKSPACE/artifacts" --project apps/okret_chat
+          bash source/tool/ci/build.sh --target android --out "$GITHUB_WORKSPACE/artifacts" --project apps/okret_admin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -201,3 +205,4 @@ jobs:
           path: artifacts/*
           retention-days: 1
           if-no-files-found: error
+

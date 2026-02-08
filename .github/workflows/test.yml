@@ -141,7 +141,7 @@ jobs:
           cache: true
 
       - name: Test (Linux integration + report)
-        id: linux_tests
+        id: linux_chat_tests
         continue-on-error: true
         shell: bash
         run: |
@@ -149,8 +149,22 @@ jobs:
           bash source/tool/ci/test.sh \
             --target linux \
             --device linux \
-            --out "$GITHUB_WORKSPACE/artifacts" \
-            --project apps/okret_chat
+            --out "$GITHUB_WORKSPACE/artifacts/chat" \
+            --project apps/okret_chat \
+            --suite chat
+
+      - name: Test (Linux admin integration + report)
+        id: linux_admin_tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash source/tool/ci/test.sh \
+            --target linux \
+            --device linux \
+            --out "$GITHUB_WORKSPACE/artifacts/admin" \
+            --project apps/okret_admin \
+            --suite admin
 
       - name: Upload artifact
         if: always()
@@ -162,7 +176,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Fail if tests failed
-        if: steps.linux_tests.outcome == 'failure'
+        if: steps.linux_chat_tests.outcome == 'failure' || steps.linux_admin_tests.outcome == 'failure'
         shell: bash
         run: exit 1
 
@@ -204,11 +218,18 @@ jobs:
           cache: true
 
       - name: Test (Windows integration + report)
-        id: windows_tests
+        id: windows_chat_tests
         continue-on-error: true
         shell: pwsh
         run: |
-          ./source/tool/ci/test.ps1 -Target windows -OutDir "$env:GITHUB_WORKSPACE\\artifacts" -Project apps/okret_chat
+          ./source/tool/ci/test.ps1 -Target windows -OutDir "$env:GITHUB_WORKSPACE\\artifacts\\chat" -Project apps/okret_chat -Suite chat
+
+      - name: Test (Windows admin integration + report)
+        id: windows_admin_tests
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          ./source/tool/ci/test.ps1 -Target windows -OutDir "$env:GITHUB_WORKSPACE\\artifacts\\admin" -Project apps/okret_admin -Suite admin
 
       - name: Upload artifact
         if: always()
@@ -220,7 +241,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Fail if tests failed
-        if: steps.windows_tests.outcome == 'failure'
+        if: steps.windows_chat_tests.outcome == 'failure' || steps.windows_admin_tests.outcome == 'failure'
         shell: pwsh
         run: exit 1
 
@@ -294,7 +315,10 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -no-snapshot -metrics-collection
           disable-animations: true
           script: |
-            bash source/tool/ci/test.sh --target android --device emulator-5554 --base-url "http://10.0.2.2:8181" --out "$GITHUB_WORKSPACE/artifacts" --project apps/okret_chat
+            export OKRET_ANDROID_APP_ID="com.okret.okret_chat"
+            bash source/tool/ci/test.sh --target android --device emulator-5554 --base-url "http://10.0.2.2:8181" --out "$GITHUB_WORKSPACE/artifacts/chat" --project apps/okret_chat --suite chat
+            export OKRET_ANDROID_APP_ID="com.okret.okret_admin"
+            bash source/tool/ci/test.sh --target android --device emulator-5554 --base-url "http://10.0.2.2:8181" --out "$GITHUB_WORKSPACE/artifacts/admin" --project apps/okret_admin --suite admin
 
       - name: Upload artifact
         if: always()
@@ -309,3 +333,4 @@ jobs:
         if: steps.android_tests.outcome == 'failure'
         shell: bash
         run: exit 1
+
