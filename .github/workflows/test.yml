@@ -57,8 +57,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-          git clone "git@github.com:${{ inputs.source_repo }}.git" source
+          : > ~/.ssh/known_hosts
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+          export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
+          for attempt in 1 2 3 4 5; do
+            if git clone "git@github.com:${{ inputs.source_repo }}.git" source; then
+              break
+            fi
+            echo "git clone failed (attempt $attempt)" >&2
+            rm -rf source >/dev/null 2>&1 || true
+            sleep $((attempt * 2))
+          done
           cd source
           git checkout "${{ inputs.source_ref }}"
 
@@ -116,8 +125,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-          git clone "git@github.com:${{ inputs.source_repo }}.git" source
+          : > ~/.ssh/known_hosts
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+          export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
+          for attempt in 1 2 3 4 5; do
+            if git clone "git@github.com:${{ inputs.source_repo }}.git" source; then
+              break
+            fi
+            echo "git clone failed (attempt $attempt)" >&2
+            rm -rf source >/dev/null 2>&1 || true
+            sleep $((attempt * 2))
+          done
           cd source
           git checkout "${{ inputs.source_ref }}"
 
@@ -166,6 +184,19 @@ jobs:
             --project apps/okret_admin \
             --suite admin
 
+      - name: Test (Linux server host integration + report)
+        id: linux_host_tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash source/tool/ci/test.sh \
+            --target linux \
+            --device linux \
+            --out "$GITHUB_WORKSPACE/artifacts/host" \
+            --project apps/okret_server_host \
+            --suite host
+
       - name: Upload artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -176,7 +207,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Fail if tests failed
-        if: steps.linux_chat_tests.outcome == 'failure' || steps.linux_admin_tests.outcome == 'failure'
+        if: steps.linux_chat_tests.outcome == 'failure' || steps.linux_admin_tests.outcome == 'failure' || steps.linux_host_tests.outcome == 'failure'
         shell: bash
         run: exit 1
 
@@ -202,8 +233,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-          git clone "git@github.com:${{ inputs.source_repo }}.git" source
+          : > ~/.ssh/known_hosts
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+          export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
+          for attempt in 1 2 3 4 5; do
+            if git clone "git@github.com:${{ inputs.source_repo }}.git" source; then
+              break
+            fi
+            echo "git clone failed (attempt $attempt)" >&2
+            rm -rf source >/dev/null 2>&1 || true
+            sleep $((attempt * 2))
+          done
           cd source
           git checkout "${{ inputs.source_ref }}"
 
@@ -231,6 +271,13 @@ jobs:
         run: |
           ./source/tool/ci/test.ps1 -Target windows -OutDir "$env:GITHUB_WORKSPACE\\artifacts\\admin" -Project apps/okret_admin -Suite admin
 
+      - name: Test (Windows server host integration + report)
+        id: windows_host_tests
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          ./source/tool/ci/test.ps1 -Target windows -OutDir "$env:GITHUB_WORKSPACE\\artifacts\\host" -Project apps/okret_server_host -Suite host
+
       - name: Upload artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -241,7 +288,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Fail if tests failed
-        if: steps.windows_chat_tests.outcome == 'failure' || steps.windows_admin_tests.outcome == 'failure'
+        if: steps.windows_chat_tests.outcome == 'failure' || steps.windows_admin_tests.outcome == 'failure' || steps.windows_host_tests.outcome == 'failure'
         shell: pwsh
         run: exit 1
 
@@ -268,8 +315,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-          git clone "git@github.com:${{ inputs.source_repo }}.git" source
+          : > ~/.ssh/known_hosts
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+          export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
+          for attempt in 1 2 3 4 5; do
+            if git clone "git@github.com:${{ inputs.source_repo }}.git" source; then
+              break
+            fi
+            echo "git clone failed (attempt $attempt)" >&2
+            rm -rf source >/dev/null 2>&1 || true
+            sleep $((attempt * 2))
+          done
           cd source
           git checkout "${{ inputs.source_ref }}"
 
@@ -333,4 +389,3 @@ jobs:
         if: steps.android_tests.outcome == 'failure'
         shell: bash
         run: exit 1
-
